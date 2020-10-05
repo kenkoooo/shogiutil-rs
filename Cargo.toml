@@ -10,3 +10,4 @@ license-file = "./LICENSE"
 
 
 [dependencies]
+thiserror = "1.0.20"
