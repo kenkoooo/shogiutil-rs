@@ -2,7 +2,7 @@ use crate::error::ShogiUtilError::CsaParseError;
 use crate::ShogiUtilError;
 use std::str::FromStr;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Piece {
     None,
     Pawn,
