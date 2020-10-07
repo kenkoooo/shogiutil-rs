@@ -40,7 +40,7 @@ impl FromStr for Color {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Square {
     pub file: u8,
     pub rank: u8,
@@ -63,7 +63,7 @@ impl FromStr for Square {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Move {
     pub color: Color,
     pub from: Option<Square>,
