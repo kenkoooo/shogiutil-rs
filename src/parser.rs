@@ -1,8 +1,6 @@
 use crate::error::ShogiUtilError::CsaParseError;
 use crate::piece::Piece;
 use crate::{Color, Move, Result, Square};
-use std::fs::read_to_string;
-use std::path::Path;
 use std::str::FromStr;
 
 pub struct ParsedCsa {
