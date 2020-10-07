@@ -6,6 +6,7 @@ use std::ops::BitAnd;
 const fn bit(file: u8, rank: u8) -> u128 {
     1 << ((rank - 1) * 9 + 9 - file)
 }
+
 const fn bit_rank(rank: u8) -> u128 {
     bit(1, rank)
         | bit(2, rank)
@@ -187,6 +188,21 @@ impl Bitboard {
         assert_ne!(self.0 & (1 << pos), 0);
         self.0 ^= 1 << pos;
     }
+
+    pub fn rotate180(&self) -> Self {
+        let mut result = Bitboard(0);
+        for file in 1..=9 {
+            for rank in 1..=9 {
+                if self.is_filled(&Square { file, rank }) {
+                    result.fill(&Square {
+                        file: 10 - file,
+                        rank: 10 - rank,
+                    });
+                }
+            }
+        }
+        result
+    }
 }
 
 fn sq_to_pos(sq: &Square) -> u8 {
@@ -196,6 +212,7 @@ fn sq_to_pos(sq: &Square) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_init_board() {
         let board = Board::default();
@@ -239,5 +256,12 @@ mod tests {
             board.piece_bb[8].0,
             0b000010000_000000000_000000000_000000000_000000000_000000000_000000000_000000000_000010000
         );
+    }
+
+    #[test]
+    fn test_rotate180() {
+        let b = Bitboard(0b_111111111_100000000_100000000_100000000_100000000_100000000_100000000_100000000_100000000);
+        let rotated = b.rotate180();
+        assert_eq!(rotated.0, 0b_000000001_000000001_000000001_000000001_000000001_000000001_000000001_000000001_111111111);
     }
 }
