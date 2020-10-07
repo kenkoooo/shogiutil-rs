@@ -29,7 +29,6 @@ pub struct Board {
     pub piece_bb: [Bitboard; PIECE_TYPES],
     pub pieces_in_hand: [[u8; PIECE_TYPES]; 2],
     pub occupied: [Bitboard; 2],
-    pub black_turn: bool,
 }
 
 impl Default for Board {
@@ -60,7 +59,6 @@ impl Default for Board {
             piece_bb,
             pieces_in_hand,
             occupied,
-            black_turn: true,
         }
     }
 }
