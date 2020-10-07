@@ -21,6 +21,10 @@ const fn bit_rank(rank: u8) -> u128 {
 
 const PIECE_TYPES: usize = 15;
 
+pub struct MoveResult {
+    pub promoted: bool,
+}
+
 pub struct Board {
     pub piece_bb: [Bitboard; PIECE_TYPES],
     pub pieces_in_hand: [[u8; PIECE_TYPES]; 2],
@@ -62,21 +66,22 @@ impl Default for Board {
 }
 
 impl Board {
-    pub fn push_move(&mut self, mv: Move) -> Result<()> {
+    pub fn push_move(&mut self, mv: Move) -> Result<MoveResult> {
         let color = mv.color;
         let piece = mv.piece;
         let to = mv.to;
-        let _prev_piece: Result<Piece> = if let Some(from) = mv.from.as_ref() {
-            let prev_piece = self.remove_piece(from, color)?;
-            if prev_piece != piece {
-                if !prev_piece.is_valid_promotion(&piece) {
+
+        let prev_piece;
+        if let Some(from) = mv.from.as_ref() {
+            let maybe_prev_piece = self.remove_piece(from, color)?;
+            if maybe_prev_piece != piece {
+                if !maybe_prev_piece.is_valid_promotion(&piece) {
                     return Err(InvalidMove(format!(
                         "Invalid promotion: {:?} => {:?}",
-                        prev_piece, mv.piece
+                        maybe_prev_piece, piece
                     )));
                 }
-                assert!(mv.piece.is_promoted());
-
+                assert!(piece.is_promoted());
                 let can_promote = match color {
                     Color::Black => from.rank <= 3 || to.rank <= 3,
                     Color::White => from.rank >= 7 || to.rank >= 7,
@@ -88,11 +93,11 @@ impl Board {
                     )));
                 }
             }
-            Ok(prev_piece)
+            prev_piece = maybe_prev_piece;
         } else {
             self.remove_hand(color, piece)?;
             assert!(!piece.is_promoted());
-            Ok(piece)
+            prev_piece = piece;
         };
 
         // todo validate move
@@ -110,7 +115,9 @@ impl Board {
         }
 
         self.push_piece(&to, color, piece);
-        Ok(())
+        Ok(MoveResult {
+            promoted: piece != prev_piece,
+        })
     }
 
     fn push_hand(&mut self, piece: Piece, color: Color) {
