@@ -45,3 +45,126 @@ impl FromStr for Piece {
         }
     }
 }
+
+impl From<u8> for Piece {
+    fn from(b: u8) -> Self {
+        match b {
+            0 => Piece::None,
+            1 => Piece::Pawn,
+            2 => Piece::Lance,
+            3 => Piece::Knight,
+            4 => Piece::Silver,
+            5 => Piece::Gold,
+            6 => Piece::Bishop,
+            7 => Piece::Rook,
+            8 => Piece::King,
+            9 => Piece::ProPawn,
+            10 => Piece::ProLance,
+            11 => Piece::ProKnight,
+            12 => Piece::ProSilver,
+            13 => Piece::ProBishop,
+            14 => Piece::ProRook,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl Piece {
+    pub fn to_byte(&self) -> u8 {
+        match self {
+            Piece::None => 0,
+            Piece::Pawn => 1,
+            Piece::Lance => 2,
+            Piece::Knight => 3,
+            Piece::Silver => 4,
+            Piece::Gold => 5,
+            Piece::Bishop => 6,
+            Piece::Rook => 7,
+            Piece::King => 8,
+            Piece::ProPawn => 9,
+            Piece::ProLance => 10,
+            Piece::ProKnight => 11,
+            Piece::ProSilver => 12,
+            Piece::ProBishop => 13,
+            Piece::ProRook => 14,
+        }
+    }
+
+    pub fn to_usize(&self) -> usize {
+        self.to_byte() as usize
+    }
+
+    pub fn promote(&self) -> Option<Piece> {
+        match self {
+            Piece::Pawn => Some(Piece::ProPawn),
+            Piece::Lance => Some(Piece::ProLance),
+            Piece::Knight => Some(Piece::ProKnight),
+            Piece::Silver => Some(Piece::ProSilver),
+            Piece::Bishop => Some(Piece::ProBishop),
+            Piece::Rook => Some(Piece::ProRook),
+            _ => None,
+        }
+    }
+
+    pub fn to_csa(&self) -> String {
+        match self {
+            Piece::None => "* ".to_string(),
+            Piece::Pawn => "FU".to_string(),
+            Piece::Lance => "KY".to_string(),
+            Piece::Knight => "KE".to_string(),
+            Piece::Silver => "GI".to_string(),
+            Piece::Gold => "KI".to_string(),
+            Piece::Bishop => "KA".to_string(),
+            Piece::Rook => "HI".to_string(),
+            Piece::King => "OU".to_string(),
+            Piece::ProPawn => "TO".to_string(),
+            Piece::ProLance => "NY".to_string(),
+            Piece::ProKnight => "NK".to_string(),
+            Piece::ProSilver => "NG".to_string(),
+            Piece::ProBishop => "UM".to_string(),
+            Piece::ProRook => "RY".to_string(),
+        }
+    }
+
+    pub fn revert_promotion(&self) -> Option<Piece> {
+        match self {
+            Piece::ProPawn => Some(Piece::Pawn),
+            Piece::ProLance => Some(Piece::Lance),
+            Piece::ProKnight => Some(Piece::Knight),
+            Piece::ProSilver => Some(Piece::Silver),
+            Piece::ProBishop => Some(Piece::Bishop),
+            Piece::ProRook => Some(Piece::Rook),
+            _ => None,
+        }
+    }
+
+    pub fn is_valid_promotion(&self, promoted: &Piece) -> bool {
+        if let Some(valid_promotion) = self.promote() {
+            &valid_promotion == promoted
+        } else {
+            false
+        }
+    }
+
+    pub fn is_promoted(&self) -> bool {
+        self == &Piece::ProPawn
+            || self == &Piece::ProLance
+            || self == &Piece::ProKnight
+            || self == &Piece::ProSilver
+            || self == &Piece::ProBishop
+            || self == &Piece::ProRook
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::piece::Piece;
+
+    #[test]
+    fn test_from_to_byte() {
+        for i in 0..15 {
+            let piece = Piece::from(i);
+            assert_eq!(piece.to_byte(), i);
+        }
+    }
+}

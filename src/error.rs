@@ -1,4 +1,3 @@
-use crate::Move;
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, ShogiUtilError>;
@@ -11,6 +10,6 @@ pub enum ShogiUtilError {
     #[error("CSA parse error: {0}")]
     CsaParseError(String),
 
-    #[error("Invalid move: {0:?}")]
-    InvalidMove(Move),
+    #[error("Invalid move: {0}")]
+    InvalidMove(String),
 }
