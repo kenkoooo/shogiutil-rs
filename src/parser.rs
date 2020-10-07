@@ -11,12 +11,6 @@ pub struct ParsedCsa {
     pub moves: Vec<Move>,
 }
 
-pub fn parse_csa_file<P: AsRef<Path>>(csa_filepath: P) -> Result<()> {
-    let content = read_to_string(csa_filepath)?;
-    parse_csa_string(&content)?;
-    Ok(())
-}
-
 pub fn parse_csa_string(csa_str: &str) -> Result<ParsedCsa> {
     let mut names = [None, None];
     let mut starting_player = None;
