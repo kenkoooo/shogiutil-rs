@@ -5,14 +5,15 @@ use std::str::FromStr;
 
 pub struct ParsedCsa {
     pub names: [Option<String>; 2],
-    pub starting_player: Color,
+    pub winner: Option<Color>,
     pub moves: Vec<Move>,
 }
 
 pub fn parse_csa_string(csa_str: &str) -> Result<ParsedCsa> {
     let mut names = [None, None];
-    let mut starting_player = None;
+    let mut current_turn = None;
     let mut moves = vec![];
+    let mut loser = None;
     for (line_number, line) in csa_str.split('\n').map(|l| l.trim()).enumerate() {
         if line.is_empty() {
             //ignore
@@ -34,23 +35,31 @@ pub fn parse_csa_string(csa_str: &str) -> Result<ParsedCsa> {
                 },
                 "+" | "-" => {
                     if line.len() == 1 {
-                        if starting_player.is_some() {
+                        if current_turn.is_some() {
                             return Err(CsaParseError(String::from(
                                 "This file has multiple starting information.",
                             )));
                         }
-                        starting_player = Some(Color::from_str(line)?);
+                        current_turn = Some(Color::from_str(line)?);
                     } else {
                         let mv = parse_move_str(line)?;
                         moves.push(mv);
+                        let current = ensure_initialized(current_turn)?;
+                        current_turn = Some(current.opponent());
                     }
                 }
                 "%" => {
                     // end of game
                     match line {
-                        "%TORYO" | "%TIME_UP" | "%ILLEGAL_MOVE" => {}
-                        "%+ILLEGAL_ACTION" => {}
-                        "%-ILLEGAL_ACTION" => {}
+                        "%TORYO" | "%TIME_UP" | "%ILLEGAL_MOVE" => {
+                            loser = Some(ensure_initialized(current_turn)?);
+                        }
+                        "%+ILLEGAL_ACTION" => {
+                            loser = Some(Color::Black);
+                        }
+                        "%-ILLEGAL_ACTION" => {
+                            loser = Some(Color::White);
+                        }
                         _ => {
                             return Err(CsaParseError(format!("{} is not supported.", line)));
                         }
@@ -70,13 +79,16 @@ pub fn parse_csa_string(csa_str: &str) -> Result<ParsedCsa> {
         }
     }
 
-    let starting_player = starting_player
-        .ok_or_else(|| CsaParseError("Starting player is not defined".to_string()))?;
+    let winner = loser.map(|c| c.opponent());
     Ok(ParsedCsa {
-        starting_player,
+        winner,
         names,
         moves,
     })
+}
+
+fn ensure_initialized(color: Option<Color>) -> Result<Color> {
+    color.ok_or_else(|| CsaParseError("Starting player is not defined".to_string()))
 }
 
 fn parse_move_str(move_str: &str) -> Result<Move> {
