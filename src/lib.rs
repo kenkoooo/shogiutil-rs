@@ -5,7 +5,7 @@ mod model;
 mod parser;
 mod piece;
 
-pub use board::Board;
+pub use board::{Bitboard, Board};
 pub use error::{Result, ShogiUtilError};
 pub use model::{Color, Move, Square};
 pub use parser::{parse_csa_string, ParsedCsa};

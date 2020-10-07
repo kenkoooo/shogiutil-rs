@@ -168,7 +168,7 @@ impl Board {
 }
 
 #[derive(Clone, Copy)]
-pub struct Bitboard(u128);
+pub struct Bitboard(pub u128);
 
 impl BitAnd for Bitboard {
     type Output = Bitboard;
