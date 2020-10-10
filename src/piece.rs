@@ -155,7 +155,7 @@ impl Piece {
             || self == &Piece::ProRook
     }
 
-    pub fn max_piece_in_hand(&self) -> usize {
+    pub const fn max_piece_in_hand(&self) -> usize {
         match self {
             Piece::Pawn => 18,
             Piece::Lance => 4,
@@ -164,7 +164,7 @@ impl Piece {
             Piece::Gold => 4,
             Piece::Bishop => 2,
             Piece::Rook => 2,
-            _ => unreachable!(),
+            _ => 0,
         }
     }
 }
