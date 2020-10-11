@@ -46,6 +46,26 @@ pub struct Square {
     pub rank: u8,
 }
 
+impl Square {
+    pub fn from_pos(i: usize, j: usize) -> Square {
+        assert!(i < 9 && j < 9);
+        Square {
+            rank: (i + 1) as u8,
+            file: (9 - j) as u8,
+        }
+    }
+    pub fn to_pos(&self) -> (usize, usize) {
+        assert!(self.is_valid());
+        let i = self.rank as usize - 1;
+        let j = 9 - self.file as usize;
+        (i, j)
+    }
+
+    pub fn is_valid(&self) -> bool {
+        1 <= self.rank && self.rank <= 9 && 1 <= self.file && self.file <= 9
+    }
+}
+
 impl FromStr for Square {
     type Err = ShogiUtilError;
 

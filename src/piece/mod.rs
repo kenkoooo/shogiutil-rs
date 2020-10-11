@@ -1,6 +1,9 @@
 use crate::error::ShogiUtilError::CsaParseError;
-use crate::ShogiUtilError;
+use crate::{Bitboard, ShogiUtilError, Square};
 use std::str::FromStr;
+
+mod moves;
+use moves::piece_moves;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Piece {
@@ -166,6 +169,10 @@ impl Piece {
             Piece::Rook => 2,
             _ => 0,
         }
+    }
+
+    pub fn generate_moves(&self, from: &Square, occupied: &[Bitboard; 2], moves: &mut Vec<Square>) {
+        piece_moves(*self, from, occupied, moves)
     }
 }
 

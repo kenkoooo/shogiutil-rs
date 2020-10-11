@@ -1,7 +1,12 @@
 use crate::error::ShogiUtilError::InvalidMove;
 use crate::piece::Piece;
 use crate::{Color, Move, Result, Square};
-use std::ops::BitAnd;
+
+mod bitboard;
+mod legal_move;
+use legal_move::generate_legal_moves;
+
+pub use bitboard::Bitboard;
 
 const fn bit(file: u8, rank: u8) -> u128 {
     1 << ((rank - 1) * 9 + 9 - file)
@@ -17,6 +22,18 @@ const fn bit_rank(rank: u8) -> u128 {
         | bit(7, rank)
         | bit(8, rank)
         | bit(9, rank)
+}
+
+const fn bit_file(file: u8) -> u128 {
+    bit(file, 1)
+        | bit(file, 2)
+        | bit(file, 3)
+        | bit(file, 4)
+        | bit(file, 5)
+        | bit(file, 6)
+        | bit(file, 7)
+        | bit(file, 8)
+        | bit(file, 9)
 }
 
 const PIECE_TYPES: usize = 15;
@@ -64,6 +81,39 @@ impl Default for Board {
 }
 
 impl Board {
+    pub fn empty() -> Self {
+        Self {
+            piece_bb: [Bitboard(0); PIECE_TYPES],
+            pieces_in_hand: [[0; PIECE_TYPES]; 2],
+            occupied: [Bitboard(0); 2],
+        }
+    }
+
+    pub fn move_between(
+        &mut self,
+        from: &Square,
+        to: &Square,
+        promote: bool,
+        color: Color,
+    ) -> Result<()> {
+        let piece = self.remove_piece(from, color)?;
+        if self.occupied[color.opponent().to_usize()].is_filled(to) {
+            let caught = self.remove_piece(to, color.opponent())?;
+            self.push_hand(caught, color);
+        }
+
+        if promote {
+            let piece = piece
+                .promote()
+                .ok_or_else(|| InvalidMove(format!("{:?} can not promote", piece)))?;
+            self.push_piece(to, color, piece);
+        } else {
+            self.push_piece(to, color, piece);
+        }
+
+        Ok(())
+    }
+
     pub fn push_move(&mut self, mv: Move) -> Result<MoveResult> {
         let color = mv.color;
         let piece = mv.piece;
@@ -96,7 +146,7 @@ impl Board {
             self.remove_hand(color, piece)?;
             assert!(!piece.is_promoted());
             prev_piece = piece;
-        };
+        }
 
         // todo validate move
 
@@ -118,18 +168,16 @@ impl Board {
         })
     }
 
-    fn push_hand(&mut self, piece: Piece, color: Color) {
+    pub fn push_hand(&mut self, piece: Piece, color: Color) {
         let piece = piece.revert_promotion().unwrap_or(piece);
         assert!(!piece.is_promoted());
 
-        let piece = piece.to_usize();
         let color = color.to_usize();
-        self.pieces_in_hand[color][piece] += 1;
-
-        // todo validate hand limit
+        assert!(self.pieces_in_hand[color][piece.to_usize()] < piece.max_piece_in_hand() as u8);
+        self.pieces_in_hand[color][piece.to_usize()] += 1;
     }
 
-    fn remove_hand(&mut self, color: Color, piece: Piece) -> Result<()> {
+    pub fn remove_hand(&mut self, color: Color, piece: Piece) -> Result<()> {
         let color = color.to_usize();
         let piece = piece.to_usize();
         if self.pieces_in_hand[color][piece] == 0 {
@@ -140,7 +188,7 @@ impl Board {
         }
     }
 
-    fn remove_piece(&mut self, sq: &Square, color: Color) -> Result<Piece> {
+    pub fn remove_piece(&mut self, sq: &Square, color: Color) -> Result<Piece> {
         let color = color.to_usize();
         if !self.occupied[color].is_filled(sq) {
             return Err(InvalidMove(format!(
@@ -160,58 +208,29 @@ impl Board {
         Ok(Piece::from(piece_type as u8))
     }
 
-    fn push_piece(&mut self, sq: &Square, color: Color, piece: Piece) {
+    pub fn push_piece(&mut self, sq: &Square, color: Color, piece: Piece) {
         assert!(!self.occupied[color.to_usize()].is_filled(sq));
         self.occupied[color.to_usize()].fill(sq);
         self.piece_bb[piece.to_usize()].fill(sq);
     }
-}
 
-#[derive(Clone, Copy)]
-pub struct Bitboard(pub u128);
-
-impl BitAnd for Bitboard {
-    type Output = Bitboard;
-
-    fn bitand(self, rhs: Self) -> Self::Output {
-        Bitboard(self.0 & rhs.0)
-    }
-}
-
-impl Bitboard {
-    pub fn is_filled(&self, sq: &Square) -> bool {
-        let pos = sq_to_pos(sq);
-        self.0 & (1 << pos) != 0
-    }
-    pub fn fill(&mut self, sq: &Square) {
-        let pos = sq_to_pos(sq);
-        assert_eq!(self.0 & (1 << pos), 0);
-        self.0 ^= 1 << pos;
-    }
-    pub fn remove(&mut self, sq: &Square) {
-        let pos = sq_to_pos(sq);
-        assert_ne!(self.0 & (1 << pos), 0);
-        self.0 ^= 1 << pos;
+    pub fn generate_legal_moves(&self) -> Vec<Move> {
+        generate_legal_moves(self)
     }
 
     pub fn rotate180(&self) -> Self {
-        let mut result = Bitboard(0);
-        for file in 1..=9 {
-            for rank in 1..=9 {
-                if self.is_filled(&Square { file, rank }) {
-                    result.fill(&Square {
-                        file: 10 - file,
-                        rank: 10 - rank,
-                    });
-                }
-            }
+        let mut piece_bb = [Bitboard(0); PIECE_TYPES];
+        for (i, bb) in self.piece_bb.iter().rev().enumerate() {
+            piece_bb[i] = bb.rotate180();
         }
-        result
+        let occupied = [self.occupied[1].rotate180(), self.occupied[0].rotate180()];
+        let pieces_in_hand = [self.pieces_in_hand[1], self.pieces_in_hand[0]];
+        Self {
+            piece_bb,
+            pieces_in_hand,
+            occupied,
+        }
     }
-}
-
-fn sq_to_pos(sq: &Square) -> u8 {
-    (sq.rank - 1) * 9 + 9 - sq.file
 }
 
 #[cfg(test)]
@@ -261,12 +280,5 @@ mod tests {
             board.piece_bb[8].0,
             0b000010000_000000000_000000000_000000000_000000000_000000000_000000000_000000000_000010000
         );
-    }
-
-    #[test]
-    fn test_rotate180() {
-        let b = Bitboard(0b_111111111_100000000_100000000_100000000_100000000_100000000_100000000_100000000_100000000);
-        let rotated = b.rotate180();
-        assert_eq!(rotated.0, 0b_000000001_000000001_000000001_000000001_000000001_000000001_000000001_000000001_111111111);
     }
 }
