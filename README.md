@@ -8,4 +8,10 @@
 `shogiutil` is a collection of tools to handle shogi data.
 
 # Status
-- [ ] CSA Parser
+- [x] CSA Parser
+- [ ] USI Protocol
+- Data Structures
+  - [x] Board
+  - [x] Piece
+  - [x] Move
+  - [x] Square
