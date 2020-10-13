@@ -64,6 +64,12 @@ impl Square {
     pub fn is_valid(&self) -> bool {
         1 <= self.rank && self.rank <= 9 && 1 <= self.file && self.file <= 9
     }
+    pub fn rotate(&self) -> Self {
+        Self {
+            rank: 9 - self.rank + 1,
+            file: 9 - self.file + 1,
+        }
+    }
 }
 
 impl FromStr for Square {
