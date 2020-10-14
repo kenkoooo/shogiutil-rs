@@ -96,3 +96,24 @@ pub struct Move {
     pub to: Square,
     pub piece: Piece,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_square() {
+        let sq = Square { file: 2, rank: 3 };
+        assert_eq!(sq.to_pos(), (2, 7));
+
+        let sq = Square::from_pos(2, 7);
+        assert_eq!(Square { file: 2, rank: 3 }, sq);
+    }
+
+    #[test]
+    fn test_rotate_square() {
+        let sq = Square { file: 2, rank: 7 };
+        let rotated = sq.rotate();
+        assert_eq!(rotated.file, 8);
+        assert_eq!(rotated.rank, 3);
+    }
+}
