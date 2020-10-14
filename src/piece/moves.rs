@@ -32,7 +32,12 @@ fn generate_moves(
 const ROOK_DIR: [(i8, i8); 4] = [(0, 1), (1, 0), (0, -1), (-1, 0)];
 const BISHOP_DIR: [(i8, i8); 4] = [(1, 1), (-1, 1), (1, -1), (-1, -1)];
 
-pub fn piece_moves(piece: Piece, from: &Square, occupied: &[Bitboard], result: &mut Vec<Square>) {
+pub(super) fn piece_moves(
+    piece: Piece,
+    from: &Square,
+    occupied: &[Bitboard],
+    result: &mut Vec<Square>,
+) {
     use Piece::*;
     match piece {
         Pawn => generate_moves(from, occupied, result, -1, 0, true),

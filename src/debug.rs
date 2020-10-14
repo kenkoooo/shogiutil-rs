@@ -1,8 +1,7 @@
 use crate::board::Board;
 use crate::piece::Piece;
-use crate::Square;
+use crate::{Bitboard, Square};
 
-#[allow(dead_code)]
 pub(crate) fn dump_board(board: &Board) -> String {
     let mut p_board = vec![vec![Piece::None; 9]; 9];
     let mut color_board = vec![vec![None; 9]; 9];
@@ -60,4 +59,22 @@ pub(crate) fn dump_board(board: &Board) -> String {
         result += "\n";
     }
     result
+}
+
+pub(crate) fn generate_bitboard(s: &str) -> Bitboard {
+    let mut bitboard = Bitboard(0);
+    for (i, row) in s.split("\n").filter(|x| !x.trim().is_empty()).enumerate() {
+        let row = row.trim().chars().collect::<Vec<_>>();
+        assert_eq!(row.len(), 9);
+        for j in 0..9 {
+            match row[j] {
+                '#' => {
+                    bitboard.0 |= 1 << (i * 9 + j);
+                }
+                '.' => {}
+                _ => unreachable!(),
+            }
+        }
+    }
+    bitboard
 }
