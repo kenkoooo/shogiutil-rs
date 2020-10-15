@@ -6,6 +6,7 @@ mod bitboard;
 mod legal_move;
 use legal_move::generate_legal_moves;
 
+use crate::model::LegalMove;
 pub use bitboard::Bitboard;
 
 const fn bit(file: u8, rank: u8) -> u128 {
@@ -214,7 +215,7 @@ impl Board {
         self.piece_bb[piece.to_usize()].fill(sq);
     }
 
-    pub fn generate_legal_moves(&self) -> Vec<Move> {
+    pub fn generate_legal_moves(&self) -> Vec<LegalMove> {
         generate_legal_moves(self)
     }
 

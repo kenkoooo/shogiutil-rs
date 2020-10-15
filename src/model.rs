@@ -97,6 +97,11 @@ pub struct Move {
     pub piece: Piece,
 }
 
+pub struct LegalMove {
+    pub mv: Move,
+    pub promoted: bool,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

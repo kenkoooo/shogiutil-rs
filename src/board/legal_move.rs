@@ -1,6 +1,7 @@
+use crate::model::LegalMove;
 use crate::{Bitboard, Board, Color, Move, Piece, Square};
 
-pub(crate) fn generate_legal_moves(board: &Board) -> Vec<Move> {
+pub(crate) fn generate_legal_moves(board: &Board) -> Vec<LegalMove> {
     let mut moves = vec![];
     for (piece_id, &piece_bb) in board.piece_bb.iter().enumerate() {
         let piece = Piece::from(piece_id as u8);
@@ -14,19 +15,25 @@ pub(crate) fn generate_legal_moves(board: &Board) -> Vec<Move> {
             for to in destinations {
                 if from.rank <= 3 || to.rank <= 3 {
                     if let Some(piece) = piece.promote() {
-                        moves.push(Move {
-                            color: Color::Black,
-                            from: Some(from.clone()),
-                            to: to.clone(),
-                            piece,
+                        moves.push(LegalMove {
+                            mv: Move {
+                                color: Color::Black,
+                                from: Some(from.clone()),
+                                to: to.clone(),
+                                piece,
+                            },
+                            promoted: true,
                         });
                     }
                 }
-                moves.push(Move {
-                    color: Color::Black,
-                    from: Some(from.clone()),
-                    to,
-                    piece,
+                moves.push(LegalMove {
+                    mv: Move {
+                        color: Color::Black,
+                        from: Some(from.clone()),
+                        to,
+                        piece,
+                    },
+                    promoted: false,
                 });
             }
         }
@@ -46,11 +53,14 @@ pub(crate) fn generate_legal_moves(board: &Board) -> Vec<Move> {
             if piece == Piece::Pawn && board.piece_bb[piece_id].file_count_ones(to.file) > 0 {
                 continue;
             }
-            moves.push(Move {
-                color: Color::Black,
-                from: None,
-                to,
-                piece,
+            moves.push(LegalMove {
+                mv: Move {
+                    color: Color::Black,
+                    from: None,
+                    to,
+                    piece,
+                },
+                promoted: false,
             })
         }
     }

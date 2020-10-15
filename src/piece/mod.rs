@@ -129,6 +129,20 @@ impl Piece {
         }
     }
 
+    pub fn to_sfen(&self) -> char {
+        match self {
+            Piece::Pawn => 'P',
+            Piece::Lance => 'L',
+            Piece::Knight => 'N',
+            Piece::Silver => 'S',
+            Piece::Gold => 'G',
+            Piece::Bishop => 'B',
+            Piece::Rook => 'R',
+            Piece::King => 'K',
+            _ => unreachable!(),
+        }
+    }
+
     pub fn revert_promotion(&self) -> Option<Piece> {
         match self {
             Piece::ProPawn => Some(Piece::Pawn),

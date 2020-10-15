@@ -119,7 +119,7 @@ pub struct SfenMove {
 
 impl SfenMove {
     pub fn parse(sfen_move: &str) -> Result<SfenMove> {
-        let e = || UsiParseError(format!("Invalid sfen move: {}", sfen_move));
+        let e = || UsiParseError(format!("Invalid sfen move: '{}'", sfen_move));
         if sfen_move.len() < 4 || 5 < sfen_move.len() {
             return Err(e());
         }
@@ -176,7 +176,7 @@ pub enum UsiRequest {
 impl UsiRequest {
     pub fn parse(input: &str) -> Result<UsiRequest> {
         let command = input.split(' ').collect::<Vec<_>>();
-        match command[0] {
+        match command[0].trim() {
             "usi" => Ok(UsiRequest::Usi),
             "isready" => Ok(UsiRequest::IsReady),
             "setoption" => {
@@ -199,7 +199,7 @@ impl UsiRequest {
                     let sfen_board = SfenBoard::parse(&sfen_string)?;
                     let mut cur_turn = sfen_board.next_turn;
                     let mut board = sfen_board.board;
-                    if command[6] != "move" {
+                    if command[6] != "moves" {
                         return Err(UsiParseError(format!("Invalid command: {}", input)));
                     }
 
@@ -218,23 +218,26 @@ impl UsiRequest {
                         next_turn: cur_turn,
                     })
                 }
-                "startops" => {
-                    if command[2] != "move" {
+                "startpos" => {
+                    if command.len() != 2 && command[2] != "moves" {
                         return Err(UsiParseError(format!("Invalid command: {}", input)));
                     }
                     let mut cur_turn = Color::Black;
                     let mut board = Board::default();
 
-                    for &command in command[3..].iter() {
-                        let sfen_move = SfenMove::parse(command)?;
-                        board.move_between(
-                            &sfen_move.from,
-                            &sfen_move.to,
-                            sfen_move.promoted,
-                            cur_turn,
-                        )?;
-                        cur_turn = cur_turn.opponent();
+                    if command.len() >= 4 {
+                        for &command in command[3..].iter() {
+                            let sfen_move = SfenMove::parse(command)?;
+                            board.move_between(
+                                &sfen_move.from,
+                                &sfen_move.to,
+                                sfen_move.promoted,
+                                cur_turn,
+                            )?;
+                            cur_turn = cur_turn.opponent();
+                        }
                     }
+
                     Ok(UsiRequest::Position {
                         board,
                         next_turn: cur_turn,
@@ -255,10 +258,14 @@ pub enum UsiResponse {
     },
     UsiOk,
     ReadyOk,
-    BestMove {
+    TravelMove {
         from: Square,
         to: Square,
         promoted: bool,
+    },
+    DropMove {
+        piece: Piece,
+        to: Square,
     },
 }
 
@@ -269,13 +276,20 @@ impl ToString for UsiResponse {
             Id { name } => format!("id name {}", name),
             UsiOk => "usiok".to_string(),
             ReadyOk => "readyok".to_string(),
-            BestMove { from, to, promoted } => {
-                let mut response = String::new();
+            TravelMove { from, to, promoted } => {
+                let mut response = "bestmove ".to_string();
                 to_sfen_square(&from, &mut response);
                 to_sfen_square(&to, &mut response);
                 if *promoted {
                     response.push('+');
                 }
+                response
+            }
+            DropMove { piece, to } => {
+                let mut response = "bestmove ".to_string();
+                response.push(piece.to_sfen());
+                response.push('*');
+                to_sfen_square(&to, &mut response);
                 response
             }
         }
@@ -333,5 +347,10 @@ P-
         assert!(mv.promoted);
         assert_eq!(mv.from, Square { file: 8, rank: 8 });
         assert_eq!(mv.to, Square { file: 2, rank: 2 });
+
+        let mv = SfenMove::parse("7g7f").unwrap();
+        assert!(!mv.promoted);
+        assert_eq!(mv.from, Square { file: 7, rank: 7 });
+        assert_eq!(mv.to, Square { file: 7, rank: 6 });
     }
 }
