@@ -13,4 +13,4 @@ pub use piece::Piece;
 pub use usi::{SfenBoard, SfenMove, UsiRequest, UsiResponse};
 
 #[cfg(test)]
-mod debug;
+pub mod debug;

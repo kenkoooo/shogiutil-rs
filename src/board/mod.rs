@@ -221,7 +221,7 @@ impl Board {
 
     pub fn rotate180(&self) -> Self {
         let mut piece_bb = [Bitboard(0); PIECE_TYPES];
-        for (i, bb) in self.piece_bb.iter().rev().enumerate() {
+        for (i, bb) in self.piece_bb.iter().enumerate() {
             piece_bb[i] = bb.rotate180();
         }
         let occupied = [self.occupied[1].rotate180(), self.occupied[0].rotate180()];
@@ -237,6 +237,7 @@ impl Board {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::debug::dump_board;
 
     #[test]
     fn test_init_board() {
@@ -280,6 +281,41 @@ mod tests {
         assert_eq!(
             board.piece_bb[8].0,
             0b000010000_000000000_000000000_000000000_000000000_000000000_000000000_000000000_000010000
+        );
+    }
+
+    #[test]
+    fn test_generate_legal_moves() {
+        let board = Board::default();
+        assert_eq!(
+            r"P1-KY-KE-GI-KI-OU-KI-GI-KE-KY
+P2 * -HI *  *  *  *  * -KA * 
+P3-FU-FU-FU-FU-FU-FU-FU-FU-FU
+P4 *  *  *  *  *  *  *  *  * 
+P5 *  *  *  *  *  *  *  *  * 
+P6 *  *  *  *  *  *  *  *  * 
+P7+FU+FU+FU+FU+FU+FU+FU+FU+FU
+P8 * +KA *  *  *  *  * +HI * 
+P9+KY+KE+GI+KI+OU+KI+GI+KE+KY
+P+
+P-
+",
+            dump_board(&board)
+        );
+        assert_eq!(
+            r"P1-KY-KE-GI-KI-OU-KI-GI-KE-KY
+P2 * -HI *  *  *  *  * -KA * 
+P3-FU-FU-FU-FU-FU-FU-FU-FU-FU
+P4 *  *  *  *  *  *  *  *  * 
+P5 *  *  *  *  *  *  *  *  * 
+P6 *  *  *  *  *  *  *  *  * 
+P7+FU+FU+FU+FU+FU+FU+FU+FU+FU
+P8 * +KA *  *  *  *  * +HI * 
+P9+KY+KE+GI+KI+OU+KI+GI+KE+KY
+P+
+P-
+",
+            dump_board(&board.rotate180())
         );
     }
 }
