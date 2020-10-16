@@ -6,6 +6,7 @@ pub struct SfenBoard {
     pub board: Board,
     pub next_turn: Color,
 }
+
 impl SfenBoard {
     pub fn parse(sfen_state: &str) -> Result<Self> {
         let e = || UsiParseError(format!("Invalid sfen format: {}", sfen_state));
@@ -221,7 +222,7 @@ impl UsiRequest {
                     if command[6] != "moves" {
                         return Err(UsiParseError(format!("Invalid command: {}", input)));
                     }
-                    push_move_commands(&mut board, &command[7..], cur_turn)?;
+                    let cur_turn = push_move_commands(&mut board, &command[7..], cur_turn)?;
                     Ok(UsiRequest::Position {
                         board,
                         next_turn: cur_turn,
@@ -231,11 +232,11 @@ impl UsiRequest {
                     if command.len() != 2 && command[2] != "moves" {
                         return Err(UsiParseError(format!("Invalid command: {}", input)));
                     }
-                    let cur_turn = Color::Black;
+                    let mut cur_turn = Color::Black;
                     let mut board = Board::default();
 
                     if command.len() >= 4 {
-                        push_move_commands(&mut board, &command[3..], cur_turn)?;
+                        cur_turn = push_move_commands(&mut board, &command[3..], cur_turn)?;
                     }
 
                     Ok(UsiRequest::Position {
@@ -252,7 +253,7 @@ impl UsiRequest {
     }
 }
 
-fn push_move_commands(board: &mut Board, command: &[&str], mut cur_turn: Color) -> Result<()> {
+fn push_move_commands(board: &mut Board, command: &[&str], mut cur_turn: Color) -> Result<Color> {
     for &command in command.iter() {
         match SfenMove::parse(command)? {
             SfenMove::DropMove { to, piece } => {
@@ -270,7 +271,7 @@ fn push_move_commands(board: &mut Board, command: &[&str], mut cur_turn: Color) 
 
         cur_turn = cur_turn.opponent();
     }
-    Ok(())
+    Ok(cur_turn)
 }
 
 pub enum UsiResponse {
@@ -339,6 +340,7 @@ mod tests {
             ]
         );
     }
+
     #[test]
     fn test_parse_board() {
         let board =
@@ -386,5 +388,31 @@ P-
         } else {
             unreachable!()
         }
+    }
+
+    #[test]
+    fn test_parse_usi_board() {
+        let input = "position startpos moves 7g7f 3c3d 2g2f 8c8d 8g8f 2c2d 2f2e 8d8e 2e2d 8e8f 2h2f 8b8d 2f2e 8d8e 3g3f 7c7d 6g6f 4c4d 4g4f 6c6d 5g5f 5c5d 3f3e 7d7e 7f7e 3d3e 4f4e 6d6e 6f6e 4d4e 3i3h 7a7b 5f5e 5d5e 7e7d 3e3f 7i7h 3a3b 7h7g 3b3c 7g7f 3c3d 7f7e 3d3e 6e6d 5e5f 3h3g 4e4f 3g3f 3e3f 5i5h 7b7c 4i4h 7c7d 4h4g 7d7e 4g4f 7e7f 4f4e 5a5b 4e4d";
+        match UsiRequest::parse(input).unwrap() {
+            UsiRequest::Position { board, next_turn } => {
+                assert_eq!(next_turn, Color::White);
+                assert_eq!(
+                    r"P1-KY-KE * -KI * -KI * -KE-KY
+P2 *  *  *  * -OU *  * -KA * 
+P3-FU *  *  *  *  *  *  * -FU
+P4 *  *  * +FU * +KI * +FU * 
+P5 * -HI *  *  *  *  * +HI * 
+P6 * -FU-GI * -FU * -GI *  * 
+P7+FU *  *  *  *  *  *  * +FU
+P8 * +KA *  * +OU *  *  *  * 
+P9+KY+KE * +KI *  *  * +KE+KY
+P+00FU00FU00FU00FU00FU
+P-00FU00FU00FU00FU00FU00GI00GI
+",
+                    dump_board(&board)
+                );
+            }
+            _ => unreachable!(),
+        };
     }
 }
