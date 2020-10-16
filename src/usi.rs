@@ -1,5 +1,5 @@
 use crate::error::ShogiUtilError::UsiParseError;
-use crate::{Board, Color, Piece};
+use crate::{Board, Color, Move, Piece};
 use crate::{Result, Square};
 
 pub struct SfenBoard {
@@ -111,10 +111,16 @@ fn parse_piece(c: char) -> Option<(Piece, Color)> {
     }
 }
 
-pub struct SfenMove {
-    pub from: Square,
-    pub to: Square,
-    pub promoted: bool,
+pub enum SfenMove {
+    DropMove {
+        to: Square,
+        piece: Piece,
+    },
+    Travel {
+        from: Square,
+        to: Square,
+        promoted: bool,
+    },
 }
 
 impl SfenMove {
@@ -124,24 +130,37 @@ impl SfenMove {
             return Err(e());
         }
 
-        let from = parse_sfen_square(&sfen_move[0..2]).ok_or_else(e)?;
+        let from = parse_sfen_square(&sfen_move[0..2]);
         let to = parse_sfen_square(&sfen_move[2..4]).ok_or_else(e)?;
-        if sfen_move.len() == 5 {
-            if &sfen_move[4..5] != "+" {
-                Err(e())
+
+        if let Some(from) = from {
+            if sfen_move.len() == 5 {
+                if &sfen_move[4..5] != "+" {
+                    Err(e())
+                } else {
+                    Ok(SfenMove::Travel {
+                        from,
+                        to,
+                        promoted: true,
+                    })
+                }
             } else {
-                Ok(SfenMove {
+                Ok(SfenMove::Travel {
                     from,
                     to,
-                    promoted: true,
+                    promoted: false,
                 })
             }
+        } else if &sfen_move[1..2] != "*" {
+            Err(e())
         } else {
-            Ok(SfenMove {
-                from,
-                to,
-                promoted: false,
-            })
+            let c = sfen_move.chars().next().unwrap();
+            let (piece, color) = parse_piece(c).ok_or_else(e)?;
+            if color != Color::Black {
+                Err(e())
+            } else {
+                Ok(SfenMove::DropMove { piece, to })
+            }
         }
     }
 }
@@ -197,22 +216,12 @@ impl UsiRequest {
                     let hand_sfen = command[4];
                     let sfen_string = vec![board_sfen, next_turn, hand_sfen, "1"].join(" ");
                     let sfen_board = SfenBoard::parse(&sfen_string)?;
-                    let mut cur_turn = sfen_board.next_turn;
+                    let cur_turn = sfen_board.next_turn;
                     let mut board = sfen_board.board;
                     if command[6] != "moves" {
                         return Err(UsiParseError(format!("Invalid command: {}", input)));
                     }
-
-                    for &command in command[7..].iter() {
-                        let sfen_move = SfenMove::parse(command)?;
-                        board.move_between(
-                            &sfen_move.from,
-                            &sfen_move.to,
-                            sfen_move.promoted,
-                            cur_turn,
-                        )?;
-                        cur_turn = cur_turn.opponent();
-                    }
+                    push_move_commands(&mut board, &command[7..], cur_turn)?;
                     Ok(UsiRequest::Position {
                         board,
                         next_turn: cur_turn,
@@ -222,20 +231,11 @@ impl UsiRequest {
                     if command.len() != 2 && command[2] != "moves" {
                         return Err(UsiParseError(format!("Invalid command: {}", input)));
                     }
-                    let mut cur_turn = Color::Black;
+                    let cur_turn = Color::Black;
                     let mut board = Board::default();
 
                     if command.len() >= 4 {
-                        for &command in command[3..].iter() {
-                            let sfen_move = SfenMove::parse(command)?;
-                            board.move_between(
-                                &sfen_move.from,
-                                &sfen_move.to,
-                                sfen_move.promoted,
-                                cur_turn,
-                            )?;
-                            cur_turn = cur_turn.opponent();
-                        }
+                        push_move_commands(&mut board, &command[3..], cur_turn)?;
                     }
 
                     Ok(UsiRequest::Position {
@@ -250,6 +250,27 @@ impl UsiRequest {
             _ => Err(UsiParseError(format!("Unsupported option: {}", input))),
         }
     }
+}
+
+fn push_move_commands(board: &mut Board, command: &[&str], mut cur_turn: Color) -> Result<()> {
+    for &command in command.iter() {
+        match SfenMove::parse(command)? {
+            SfenMove::DropMove { to, piece } => {
+                board.push_move(Move {
+                    from: None,
+                    to,
+                    piece,
+                    color: cur_turn,
+                })?;
+            }
+            SfenMove::Travel { from, to, promoted } => {
+                board.move_between(&from, &to, promoted, cur_turn)?;
+            }
+        }
+
+        cur_turn = cur_turn.opponent();
+    }
+    Ok(())
 }
 
 pub enum UsiResponse {
@@ -343,14 +364,27 @@ P-
 
     #[test]
     fn test_parse_sfen_move() {
-        let mv = SfenMove::parse("8h2b+").unwrap();
-        assert!(mv.promoted);
-        assert_eq!(mv.from, Square { file: 8, rank: 8 });
-        assert_eq!(mv.to, Square { file: 2, rank: 2 });
+        if let SfenMove::Travel { from, to, promoted } = SfenMove::parse("8h2b+").unwrap() {
+            assert!(promoted);
+            assert_eq!(from, Square { file: 8, rank: 8 });
+            assert_eq!(to, Square { file: 2, rank: 2 });
+        } else {
+            unreachable!()
+        }
 
-        let mv = SfenMove::parse("7g7f").unwrap();
-        assert!(!mv.promoted);
-        assert_eq!(mv.from, Square { file: 7, rank: 7 });
-        assert_eq!(mv.to, Square { file: 7, rank: 6 });
+        if let SfenMove::Travel { from, to, promoted } = SfenMove::parse("7g7f").unwrap() {
+            assert!(!promoted);
+            assert_eq!(from, Square { file: 7, rank: 7 });
+            assert_eq!(to, Square { file: 7, rank: 6 });
+        } else {
+            unreachable!()
+        }
+
+        if let SfenMove::DropMove { to, piece } = SfenMove::parse("S*5b").unwrap() {
+            assert_eq!(piece, Piece::Silver);
+            assert_eq!(to, Square { file: 5, rank: 2 });
+        } else {
+            unreachable!()
+        }
     }
 }
